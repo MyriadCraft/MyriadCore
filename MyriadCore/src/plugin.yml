@@ -2,4 +2,33 @@ name: MyriadCore
 main: me.meiamsome.myriadcore.MyriadCore
 version: 0.0.1
 author: meiamsome
+load: STARTUP
 description: Woo yeah!
+commands:
+ mc:
+  description: Controls MyriadCore
+ ignoreplugin:
+  description: Ignores plugins
+  aliases: [ip, ignore]
+ talk:
+  description: Talks in a channel
+  aliases: [chat]
+permissions:
+ mc.staff:
+  description: Represents any staff member
+  default: op
+ mc.mod:
+  description: Represents a guide
+  default: op
+ mc.mod:
+  description: Represents a mod
+  default: op
+ mc.admin:
+  description: Represents an admin
+  default: op
+ mc.owner:
+  description: Represents the owner
+  default: false
+ mc.dev:
+  description: Represents a dev
+  default: op
