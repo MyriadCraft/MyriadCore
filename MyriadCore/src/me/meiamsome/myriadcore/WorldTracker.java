@@ -10,25 +10,23 @@ import me.meiamsome.myriadbase.MyriadPlugin;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
-import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.event.Event;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
-import org.bukkit.event.block.BlockListener;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.entity.EntityListener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkPopulateEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
-import org.bukkit.event.world.WorldListener;
 import org.bukkit.plugin.PluginManager;
 
 
-public class WorldTracker implements Runnable {
+public class WorldTracker implements Runnable, Listener {
 	Chunk loading = null;
 	int loadPos=0;
 	long timeout = 10, lastrescan=0;
@@ -44,17 +42,7 @@ public class WorldTracker implements Runnable {
 	ArrayList<Chunk> loadQueue = new ArrayList<Chunk>();
 	ArrayList<Chunk> unloadQueue = new ArrayList<Chunk>();
 	WorldTracker(MyriadCore parent, PluginManager pm) {
-		wl wL= new wl();
-		bl bL= new bl();
-		el eL= new el();
-		pm.registerEvent(Event.Type.CHUNK_LOAD, wL, Event.Priority.Monitor, parent);
-		pm.registerEvent(Event.Type.CHUNK_POPULATED, wL, Event.Priority.Monitor, parent);
-		pm.registerEvent(Event.Type.CHUNK_UNLOAD, wL, Event.Priority.Monitor, parent);
-		pm.registerEvent(Event.Type.ENTITY_DEATH, eL, Event.Priority.Monitor, parent);
-		pm.registerEvent(Event.Type.CREATURE_SPAWN, eL, Event.Priority.Monitor, parent);
-		pm.registerEvent(Event.Type.BLOCK_PLACE, bL, Event.Priority.Lowest, parent);
-		pm.registerEvent(Event.Type.BLOCK_BREAK, bL, Event.Priority.Lowest, parent);
-		pm.registerEvent(Event.Type.BLOCK_PISTON_EXTEND, bL, Event.Priority.Lowest, parent);
+		pm.registerEvents(this, parent);
 		par=parent;
 		par.getServer().getScheduler().scheduleSyncRepeatingTask(par, this, 10, 10);
 	}
@@ -94,8 +82,8 @@ public class WorldTracker implements Runnable {
 
 				//if(par.debug && loading==null) par.log.info("[MyriadCore] [Debug] Done.");
 			} else {
-				if(!blockSearches.isEmpty() && loadPos<0x9000) {
-					int a=Math.min(0x9000,loadPos+0xFF);
+				if(!blockSearches.isEmpty() && loadPos<0x10000) {
+					int a=Math.min(0x10000,loadPos+0xFF);
 					Block b;
 					while(loadPos<a) {
 						b=loading.getBlock((loadPos&0xF), ((loadPos&0xFF00)/0x100), ((loadPos&0xF0)/0x10));
@@ -143,52 +131,46 @@ public class WorldTracker implements Runnable {
 		return (BlockTracker) scanner;
 	}	
 
-	class wl extends WorldListener {
-		@Override
-		public void onChunkLoad(ChunkLoadEvent event) {loadQueue.add(event.getChunk());}
-		@Override
-		public void onChunkUnload(ChunkUnloadEvent event) {unloadQueue.add(event.getChunk());}
-		@Override
-		public void onChunkPopulate(ChunkPopulateEvent event) {}
-	}
-	class el extends EntityListener {
-		@Override
-		public void onCreatureSpawn(CreatureSpawnEvent event) {
-			for(WorldScanner<LivingEntity> ls: liveSearches) {
-				if(ls.isIncluded(event.getEntity())) ls.found((LivingEntity) event.getEntity());
-			}
-		}
-		@Override
-		public void onEntityDeath(EntityDeathEvent event) {
-			for(WorldScanner<LivingEntity> ls: liveSearches) {
-				((LivingTracker)ls).death(event);
-			}
+	@EventHandler (priority=EventPriority.MONITOR)
+	public void onChunkLoad(ChunkLoadEvent event) {loadQueue.add(event.getChunk());}
+	@EventHandler (priority=EventPriority.MONITOR)
+	public void onChunkUnload(ChunkUnloadEvent event) {unloadQueue.add(event.getChunk());}
+	@EventHandler (priority=EventPriority.MONITOR)
+	public void onChunkPopulate(ChunkPopulateEvent event) {}
+	@EventHandler (priority=EventPriority.MONITOR)
+	public void onCreatureSpawn(CreatureSpawnEvent event) {
+		for(WorldScanner<LivingEntity> ls: liveSearches) {
+			if(ls.isIncluded(event.getEntity())) ls.found((LivingEntity) event.getEntity());
 		}
 	}
-	class bl extends BlockListener {
-		@Override
-		public void onBlockBreak(BlockBreakEvent event) {
-			boolean cancel = event.isCancelled();
-			for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canDestroy(event)) cancel=true;
-			event.setCancelled(cancel);
-			if(cancel) return;
-			for(WorldScanner<Block> sc: blockSearches) sc.remove(event.getBlock());
+	@EventHandler (priority=EventPriority.MONITOR)
+	public void onEntityDeath(EntityDeathEvent event) {
+		for(WorldScanner<LivingEntity> ls: liveSearches) {
+			((LivingTracker)ls).death(event);
 		}
-		@Override
-		public void onBlockPlace(BlockPlaceEvent event) {
-			boolean cancel = event.isCancelled();
-			for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canPlace(event)) cancel=true;
-			event.setCancelled(cancel);
-			if(cancel) return;
-			for(WorldScanner<Block> sc: blockSearches) if(sc.isIncluded(event.getBlock())) sc.found(event.getBlock());
-		}
-		@Override
-		public void onBlockPistonExtend(BlockPistonExtendEvent event) {
-			boolean cancel = event.isCancelled();
-			for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canMove(event)) cancel=true;
-			event.setCancelled(cancel);
-			if(cancel) return;
-			for(WorldScanner<Block> sc: blockSearches) ((BlockTracker)sc).move(event);
-		}
+	}
+	@EventHandler (priority=EventPriority.HIGH)
+	public void onBlockBreak(BlockBreakEvent event) {
+		boolean cancel = event.isCancelled();
+		for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canDestroy(event)) cancel=true;
+		event.setCancelled(cancel);
+		if(cancel) return;
+		for(WorldScanner<Block> sc: blockSearches) sc.remove(event.getBlock());
+	}
+	@EventHandler (priority=EventPriority.HIGH)
+	public void onBlockPlace(BlockPlaceEvent event) {
+		boolean cancel = event.isCancelled();
+		for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canPlace(event)) cancel=true;
+		event.setCancelled(cancel);
+		if(cancel) return;
+		for(WorldScanner<Block> sc: blockSearches) if(sc.isIncluded(event.getBlock())) sc.found(event.getBlock());
+	}
+	@EventHandler (priority=EventPriority.HIGH)
+	public void onBlockPistonExtend(BlockPistonExtendEvent event) {
+		boolean cancel = event.isCancelled();
+		for(WorldScanner<Block> sc: blockSearches) if(!((BlockTracker)sc).canMove(event)) cancel=true;
+		event.setCancelled(cancel);
+		if(cancel) return;
+		for(WorldScanner<Block> sc: blockSearches) ((BlockTracker)sc).move(event);
 	}
 }

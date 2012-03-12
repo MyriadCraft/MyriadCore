@@ -2,16 +2,17 @@ package me.meiamsome.myriadbase;
 
 import me.meiamsome.myriadcore.MyriadCore;
 
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
-import org.bukkit.event.server.ServerListener;
 
-public class PluginListener extends ServerListener{
+public class PluginListener implements Listener{
 	MyriadPlugin par;
 	public PluginListener(MyriadPlugin parent) {
 		par=parent;
 	}
-	@Override
+	@EventHandler
 	public void onPluginEnable(PluginEnableEvent event) {
 		if(par.core!=null) return;
 		if(event.getPlugin().getDescription().getName().equals("MyriadCore")) {
@@ -24,6 +25,7 @@ public class PluginListener extends ServerListener{
 			}
 		}
 	}
+	@EventHandler
 	public void onPluginDisable(PluginDisableEvent event) {
 		if(par.core==null) return;
 		if(event.getPlugin()==par.core) {

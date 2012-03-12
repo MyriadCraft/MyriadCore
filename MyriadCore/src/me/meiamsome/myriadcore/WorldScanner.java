@@ -37,7 +37,7 @@ public abstract class WorldScanner<T> {
 				Object a=methods[method].invoke(owner, args);
 				if(a instanceof Boolean && a!=null) ret=(Boolean) a;
 			} catch (Exception e) {
-				mc.log.warning("[MyriadCore][Debug]Failed to pass WorldTracker event to "+plug.getName());
+				mc.log.warning("[MyriadCore][Debug]Failed to pass WorldTracker event to "+plug.getPluginName());
 				if(mc.debug) e.printStackTrace();
 			}
 			return ret;

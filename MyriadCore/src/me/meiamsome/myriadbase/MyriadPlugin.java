@@ -9,7 +9,6 @@ import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Event;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,13 +19,12 @@ public abstract class MyriadPlugin extends JavaPlugin {
 	PluginListener pluginListener;
 	PluginManager pm;
 	public final int CHAT_ALL=0, CHAT_DEV=1, CHAT_ADMIN=2;
+	public final int CHATLEVEL_FULL=0, CHATLEVEL_LIMITED=1, CHATLEVEL_BLOCKED=2;
 	@Override
 	public void onEnable() {
 		pm=getServer().getPluginManager();
 		pluginListener = new PluginListener(this);
-		
-		pm.registerEvent(Event.Type.PLUGIN_ENABLE, pluginListener, Event.Priority.Monitor, this);
-		pm.registerEvent(Event.Type.PLUGIN_DISABLE, pluginListener, Event.Priority.Monitor, this);
+		pm.registerEvents(pluginListener, this);
 		if(!pm.isPluginEnabled("MyriadCore")) {
 			log.warning("["+getDescription().getName()+"] MyriadCore is currently disabled / not on server.");
 		} else {
@@ -46,6 +44,7 @@ public abstract class MyriadPlugin extends JavaPlugin {
 		
 	}
 	public void onConnect() {}
+	public void onDisconnect() {}
 	void ConnectCore() {
 		if(core!=null && !isConnected())
 			core.add(this);
@@ -59,7 +58,7 @@ public abstract class MyriadPlugin extends JavaPlugin {
 		return core.isConnected(this);
 	}
 
-	public String getName() {
+	public String getPluginName() {
 		if(!isConnected()) return getDescription().getName();
 		return core.getName(this);
 	}
@@ -83,6 +82,17 @@ public abstract class MyriadPlugin extends JavaPlugin {
 		if(!isConnected()) throw new CoreNotConnectedException();
 		core.setTextColor(this, col);
 	}
+
+	public  void setTempLevel(Player player, int level, boolean tell) throws CoreNotConnectedException {
+		if(!isConnected()) throw new CoreNotConnectedException();
+		core.setTempLevel(this,player,level, tell);
+	}
+
+	public  void resetTempLevel(Player player) throws CoreNotConnectedException {
+		if(!isConnected()) throw new CoreNotConnectedException();
+		core.resetTempLevel(this,player);
+	}
+	
 	// BEGIN CRAZY OVERLOAD FUNCTIONS
 	public void broadcastMessage(String message) {sendMessage(null,message,0,true);}
 	public void broadcastMessage(String message, int level) {sendMessage(null,message,level,true);}
@@ -118,7 +128,8 @@ public abstract class MyriadPlugin extends JavaPlugin {
 			core.sendMessage(cs, message, tag, level, this);
 			return;
 		}
-		String msg = message[0];
+		String msg=null;
+		for(int i=0;i<message.length && msg==null;i++) msg=message[i];
 		if(tag) {
 			msg=ChatColor.YELLOW+"["+getDescription().getName()+"] "+ChatColor.WHITE+msg;
 		}

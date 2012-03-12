@@ -9,18 +9,19 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.LivingEntity;
-import org.bukkit.event.Event;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 
 public class MyriadCore extends MyriadPlugin{
 	ChatHandler ch;
 	PluginHandler ph;
 	WorldTracker wt;
-	public boolean debug = true;
+	public boolean debug = false;
 	
 	PluginManager pm;
 	@Override
 	public void onDisable() {
+		ph.saveAll();
 		super.onDisable();
 	}
 
@@ -32,10 +33,14 @@ public class MyriadCore extends MyriadPlugin{
 		ph=new PluginHandler(this);
 		wt=new WorldTracker(this, pm);
 
-		
-		pm.registerEvent(Event.Type.PLUGIN_DISABLE, ph, Event.Priority.Monitor, this);
+		pm.registerEvents(ph, this);
 		getCommand("ignoreplugin").setExecutor(ch);
 		getCommand("talk").setExecutor(ch);
+		getServer().getScheduler().scheduleAsyncRepeatingTask(this, new Runnable() {
+			public void run() {
+				ph.saveAll();
+			}
+		}, 100, 24000);// 100/20 = 5, 24000/20 = 1200 (20 mins)
 		super.onEnable();
 	}
 	@Override
@@ -56,8 +61,18 @@ public class MyriadCore extends MyriadPlugin{
 	public boolean isConnected(MyriadPlugin plugin) {return ph.isConnected(plugin);}
 	
 	//Chat handler functions
-	public void sendMessage(CommandSender player, String[] message, boolean tag, int type, MyriadPlugin plugin) {ch.sendMessage(player, message, tag, type, plugin);}
+	public void sendMessage(CommandSender player, String[] message, boolean tag, int type, MyriadPlugin plugin) {
+		ch.sendMessage(player, message, tag, type, plugin);
+	}
 	public String[] getToAll(String str) {return ch.getToAll(str); }
+	public void setTempLevel(MyriadPlugin p, Player player, int level, boolean tell) {ch.changeLevel(p, player, level, CHAT_ALL, true, tell);}
+	public void resetTempLevel(MyriadPlugin p, Player player) {
+		if(player==null) {
+			for(Player pla: getServer().getOnlinePlayers()) resetTempLevel(p, pla);
+			return;
+		}
+		ch.changeLevel(p, player, 0xF, CHAT_ALL, true, false);
+	}
 	
 	//World tracker functions
 	public LivingTracker newScan(Class<? extends LivingEntity> theClass, Object creator, MyriadPlugin plugin) {return wt.newScan(theClass,creator,plugin);}

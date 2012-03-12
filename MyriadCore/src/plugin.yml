@@ -17,7 +17,7 @@ permissions:
  mc.staff:
   description: Represents any staff member
   default: op
- mc.mod:
+ mc.guide:
   description: Represents a guide
   default: op
  mc.mod:
